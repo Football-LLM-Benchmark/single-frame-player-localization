@@ -1,9 +1,18 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useScoreData } from '../useScoreData'
 
 export default function Leaderboard() {
   const { data, error } = useScoreData()
+  const [zoomed, setZoomed] = useState(false)
+  const heroSrc = `${import.meta.env.BASE_URL}background.png`
+
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e) => { if (e.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
 
   return (
     <section>
@@ -16,7 +25,17 @@ export default function Leaderboard() {
           is the average localization error in meters — <strong>lower is better</strong>.
         </p>
       </div>
-      <img src={`${import.meta.env.BASE_URL}background.png`} alt="Broadcast image → pitch coordinate projection" className="hero-image" />
+      <img
+        src={heroSrc}
+        alt="Broadcast image → pitch coordinate projection"
+        className="hero-image"
+        onClick={() => setZoomed(true)}
+      />
+      {zoomed && (
+        <div className="lightbox" onClick={() => setZoomed(false)} role="dialog" aria-label="Zoomed image">
+          <img src={heroSrc} alt="Broadcast image → pitch coordinate projection" />
+        </div>
+      )}
       {error && <p id="status">Failed to load scores: {error}</p>}
       {!data && !error && <p id="status">Loading scores…</p>}
       {data && (
