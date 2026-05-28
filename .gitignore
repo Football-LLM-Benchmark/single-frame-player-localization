@@ -3,3 +3,14 @@ __pycache__/
 data/
 *.pyc
 .DS_Store
+
+# Frontend (Vite/React)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Keep frontend's public data CSVs (override top-level data/ rule)
+!frontend/public/data/
