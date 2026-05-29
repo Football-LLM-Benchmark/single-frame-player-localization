@@ -3,5 +3,5 @@
 
 export const config = {
   // Date the score CSVs in public/data were last refreshed.
-  leaderboardLastUpdated: '2026-05-21',
+  leaderboardLastUpdated: '2026-05-29',
 }
