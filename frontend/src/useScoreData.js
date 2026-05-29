@@ -4,6 +4,7 @@ const BASE = import.meta.env.BASE_URL
 
 const SOURCES = [
   { name: "baseline", url: `${BASE}data/baseline_scores.csv`, isBaseline: true },
+  { name: "claude-opus-4-8", url: `${BASE}data/claude-opus-4-8_scores.csv`, isBaseline: false },
   { name: "claude-opus-4-7", url: `${BASE}data/claude-opus-4-7_scores.csv`, isBaseline: false },
   { name: "claude-sonnet-4-6", url: `${BASE}data/claude-sonnet-4-6_scores.csv`, isBaseline: false },
   { name: "nova-pro", url: `${BASE}data/nova-pro_scores.csv`, isBaseline: false },

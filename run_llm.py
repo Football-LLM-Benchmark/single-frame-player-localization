@@ -47,6 +47,7 @@ DEFAULT_MAX_ATTEMPTS = 5
 PRED_FIELDS = ["split", "clip", "frame", "x", "y"]
 
 MODELS = [
+    {"name": "claude-opus-4-8",    "id": "us.anthropic.claude-opus-4-8",              "api": "converse"},
     {"name": "claude-opus-4-7",    "id": "us.anthropic.claude-opus-4-7",              "api": "converse"},
     {"name": "claude-sonnet-4-6",  "id": "us.anthropic.claude-sonnet-4-6",            "api": "converse"},
     {"name": "nova-pro",           "id": "us.amazon.nova-pro-v1:0",                   "api": "converse"},
@@ -207,12 +208,13 @@ def main():
 
     manifest = read_manifest(args.manifest)
     todo = [t for t in manifest if not is_done(t[1], t[2])]
+    already_done = len(manifest) - len(todo)
     if args.limit:
         todo = todo[: args.limit]
 
     print(f"model:        {model['name']} ({model['id']})")
     print(f"manifest:     {args.manifest}  ({len(manifest)} frames)")
-    print(f"already done: {len(manifest) - len(todo)} frames")
+    print(f"already done: {already_done} frames")
     print(f"to process:   {len(todo)} frames")
     print(f"preds out:    {preds_path}")
     print(f"raw out:      {raw_dir}\n")

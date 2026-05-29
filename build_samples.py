@@ -45,10 +45,7 @@ SAMPLES = [
 
 REPO = Path(__file__).resolve().parent
 RESULTS = REPO / "results"
-# Images live under test_peek today; fall back to canonical {split} dirs if/when
-# the full split is unzipped.
 CLIP_ROOTS = [
-    REPO / "data" / "gamestate-2024" / "test_peek",
     REPO / "data" / "gamestate-2024" / "test",
     REPO / "data" / "gamestate-2024" / "valid",
 ]
