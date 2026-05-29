@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Plotly from 'plotly.js-dist-min'
 import { useScoreData } from '../useScoreData'
+import SampleViews from '../components/SampleViews'
+import PageToc from '../components/PageToc'
 
 const FILTERS = {
   "all": () => true,
@@ -110,10 +112,12 @@ export default function Profiling() {
 
   return (
     <section>
+      <PageToc />
       <h1>Performance profiling</h1>
       <p className="lede">
         How does the performance of each model vary across <Link to="/methodology#dataset">385 test images</Link>?
       </p>
+      <h2 id="score-distribution">Score distribution</h2>
       <div className="filter-group">
         <span className="filter-label">Visible players:</span>
         <div className="filter-buttons">
@@ -139,6 +143,7 @@ export default function Profiling() {
         <li>Vertical black line is the mean</li>
         <li>X-axis clipped at 50 for readability</li>
         <li>Models are color-coded based on the classification as below</li>
+        <li>Each point in the diagram matches the actual score for an image in dataset</li>
       </ul>
       <details className="legend" open>
         <summary><h3>Architecture grouping</h3></summary>
@@ -151,6 +156,15 @@ export default function Profiling() {
           <li><span className="swatch" style={{background:"#222"}} /><b><Link to="/methodology#cv-baseline" style={{textDecoration:"none"}}>CV baseline</Link></b> — classical computer-vision pipeline, not an LLM.</li>
         </ul>
       </details>
+
+      <h2 id="sample-images">Sample images</h2>
+      <p>
+        Pick a sample image, then choose up to two models to overlay on the pitch
+        view. Ground truth is shown as green ✕; predictions appear as blue circles
+        (Model A) and red diamonds (Model B). Use this to compare the same scene
+        across models side by side.
+      </p>
+      <SampleViews />
     </section>
   )
 }

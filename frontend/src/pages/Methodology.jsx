@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import PageToc from '../components/PageToc'
 
 export default function Methodology() {
   const { hash } = useLocation()
@@ -39,9 +40,10 @@ export default function Methodology() {
 
   return (
     <section>
+      <PageToc />
       <h1>Methodology</h1>
 
-      <h2>Task</h2>
+      <h2 id="task">Task</h2>
       <p>
         Each model receives a single broadcast still frame and a text prompt
         describing the pitch coordinate system. It must return a JSON array of
@@ -67,7 +69,7 @@ export default function Methodology() {
         to avoid near-duplicate images.
       </p>
 
-      <h2>Coordinate system</h2>
+      <h2 id="coordinate-system">Coordinate system</h2>
       <p>
         The pitch is 105 m × 68 m. The origin (0, 0) is at the center of the pitch.
       </p>
@@ -81,7 +83,7 @@ export default function Methodology() {
         alone — no camera calibration is provided.
       </p>
 
-      <h2>Scoring: GOSPA</h2>
+      <h2 id="scoring">Scoring</h2>
       <p>
         We use <a href="https://arxiv.org/abs/1601.05585" target="_blank" rel="noopener noreferrer">GOSPA</a>{' '}
         (Generalized Optimal Sub-Pattern Assignment) with parameters
@@ -115,7 +117,7 @@ export default function Methodology() {
           its true position.</li>
       </ul>
 
-      <h2>Normalization & aggregation</h2>
+      <h2 id="normalization">Normalization & aggregation</h2>
       <p>
         Raw GOSPA is divided by the number of ground-truth players in that frame
         so that crowded frames don't dominate the headline:
@@ -135,14 +137,14 @@ export default function Methodology() {
         where {"$N = 385$"} (total frames in dataset). Units are meters; lower is better.
       </p>
 
-      <h2>What's scored (and what isn't)</h2>
+      <h2 id="what-scored">What's scored (and what isn't)</h2>
       <p>
         Scoring is <strong>position-only</strong>. The model prompt asks for team and role
         labels, but these are ignored during evaluation — only the (x, y) coordinates
         matter. This isolates spatial reasoning from jersey/role classification.
       </p>
 
-      <h2>Evaluation procedure</h2>
+      <h2 id="evaluation">Evaluation procedure</h2>
       <p>
         For each frame in the dataset, the following process is applied identically
         to every model:
