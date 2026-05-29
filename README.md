@@ -1,5 +1,7 @@
 # Football Image LLM Benchmark
 
+**Live leaderboard:** https://football-llm-benchmark.github.io/single-frame-player-localization/
+
 A public research benchmark evaluating multimodal LLMs on predicting player
 XY pitch coordinates (in meters) from broadcast still frames of professional
 football matches. Ground truth comes from the SoccerNet GameState 2024
@@ -14,24 +16,34 @@ The scored set of frames is fixed in `manifest.csv` (396 frames, stratified
 across camera direction × in-camera player count, drawn from 100 distinct
 clips).
 
-## Reproducing the reference (CV) baseline
+## Reproducing the results
 
-The reference baseline is the published sn-gamestate Game State
-Reconstruction pipeline. Two scripts produce its predictions over the
-manifest.
+The flow is the same regardless of what you're benchmarking:
 
-### Prerequisites
+1. Install prerequisites
+2. Download the dataset
+3. Generate predictions (CV baseline, a single LLM, or many LLMs)
+4. Score the predictions
 
-- Linux machine with NVIDIA GPU (≥10 GB VRAM; benchmarked on g5.xlarge / A10G)
-- Python 3.9+
+### 1. Prerequisites
+
+Common to all paths:
+
+- Linux machine; Python 3.9+
 - `~`50 GB free disk for dataset + intermediate state
-- The upstream sn-gamestate repo cloned and set up per its README:
-  https://github.com/SoccerNet/sn-gamestate
-  (You must be able to run `uv run tracklab -cn soccernet ...` from inside
-  that clone.)
-- `pip install SoccerNet` for the dataset downloader
+- `pip install SoccerNet boto3`
 
-### 1. Download data
+Path-specific extras:
+
+- **CV baseline** — NVIDIA GPU (≥10 GB VRAM; benchmarked on g5.xlarge / A10G),
+  plus the upstream sn-gamestate repo cloned and set up per its README so you
+  can run `uv run tracklab -cn soccernet …` from inside that clone:
+  https://github.com/SoccerNet/sn-gamestate
+- **LLM evaluations** — AWS credentials configured for an account that has
+  Bedrock model access enabled in `us-east-1` for every model you want to
+  evaluate (Bedrock console → Model access).
+
+### 2. Download data
 
 Reads `manifest.csv` and ensures every (split, clip) it references is
 unzipped under `data/SoccerNetGS/{split}/SNGS-XXX/`. Idempotent: a
@@ -47,7 +59,7 @@ Flags (all optional):
 - `--soccernet-dir PATH` — where data goes (default: `./data/SoccerNetGS`)
 - `--keep-zips` — don't delete `{split}.zip` after extraction
 
-### 2. Run baseline and extract predictions
+### 3a. Generate predictions — CV baseline
 
 For each unique clip in the manifest, runs sn-gamestate on the full clip,
 extracts pitch-meter predictions for the manifest's specific frames in
@@ -55,120 +67,108 @@ that clip, and appends them to a single text CSV. Per-clip tracklab
 state (`pklz`) is deleted after extraction.
 
 ```bash
-python run_baseline.py --sn-gamestate-dir /path/to/your/sn-gamestate
+python run_baseline.py \
+    --sn-gamestate-dir /path/to/your/sn-gamestate \
+    --out results/baseline_preds.csv
 ```
 
 Resumable: if interrupted, re-running picks up from the next un-extracted
 clip. Approximate wall time on the default 396-frame / 100-clip manifest:
 ~10 hours on a g5.xlarge.
 
-Flags:
-- `--manifest PATH`, `--soccernet-dir PATH`, `--out PATH` — same idea as above
+Other flags:
+- `--manifest PATH`, `--soccernet-dir PATH` — same idea as `download_data.py`
 - `--run-dir-root PATH` — where per-clip tracklab outputs go
   (default: `<sn-gamestate-dir>/outputs/manifest_run`)
 - `--keep-pklz` — don't delete per-clip tracklab state after extraction
 
-Output: `baseline_preds.csv`, one row per predicted player:
+### 3b. Generate predictions — single LLM
 
-```
-split,clip,frame,x,y
-test,SNGS-143,000348.jpg,25.554661,23.333062
-test,SNGS-143,000348.jpg,38.355657,5.707241
-...
-```
-
-Frames where the baseline returned zero predictions are omitted (the
-empty-list semantic is preserved by joining against `manifest.csv`).
-
-## Reproducing the LLM evaluations
-
-The LLM harness (`run_llm.py`) calls a chosen Bedrock multimodal model on
-every frame in the manifest, parses a JSON array of `(x, y)` predictions
-out of the response, and appends them to `<model>_preds.csv` (same
-schema as `baseline_preds.csv`). Resumable: a frame is "done" iff its
-raw response is on disk under `raw_outputs/<model>/`.
-
-### Prerequisites
-
-- Linux machine with AWS credentials configured for an account that has
-  Bedrock model access enabled in `us-east-1` for every model you want
-  to evaluate (check the Bedrock console → Model access)
-- Python 3.9+, `pip install boto3`
-- The dataset prepared as in step 1 above (`python download_data.py`)
-
-### 1. Run a single model
+The LLM harness calls a chosen Bedrock multimodal model on every frame in
+the manifest, parses a JSON array of `(x, y)` predictions out of the
+response, and appends them to `<model>_preds.csv`. Resumable: a frame is
+"done" iff its raw response is on disk under `raw_outputs/<model>/`.
 
 ```bash
-python run_llm.py --model claude-opus-4-7
+python run_llm.py --model claude-opus-4-8 --out-dir results/
 ```
 
-Output:
+Outputs (under `--out-dir`):
 - `<model>_preds.csv` — one row per predicted player (schema:
-  `split,clip,frame,x,y`)
+  `split,clip,frame,x,y`, same as `baseline_preds.csv`)
 - `raw_outputs/<model>/<clip>_<frame>.txt` — raw model response per
   successful frame (also serves as the resumability marker)
-- `raw_outputs/<model>/<clip>_<frame>.failed.txt` — last raw response
-  for frames that exhausted retries (re-run the script to retry)
+- `raw_outputs/<model>/<clip>_<frame>.failed.txt` — last raw response for
+  frames that exhausted retries (re-run the script to retry)
 
 Flags:
-- `--model NAME` (required) — one of: `claude-opus-4-7`,
+- `--model NAME` (required) — one of: `claude-opus-4-8`, `claude-opus-4-7`,
   `claude-sonnet-4-6`, `nova-pro`, `llama4-maverick`, `llama4-scout`,
-  `pixtral-large`, `gemma-3-27b`, `qwen3-vl`, `nemotron-nano`,
-  `kimi-k2.5`
+  `pixtral-large`, `gemma-3-27b`, `qwen3-vl`, `nemotron-nano`, `kimi-k2.5`
 - `--max-attempts N` — retries per frame on call/parse failure (default 5)
 - `--manifest`, `--soccernet-dir`, `--prompt`, `--out-dir`, `--region` —
   overrides for the corresponding defaults
 - `--limit N` — process only the first N un-done frames (smoke testing)
 
-### 2. Run all models
+### 3c. Generate predictions — multiple LLMs
 
 Sequential loop (each model is independent and resumable):
 
 ```bash
-for m in claude-sonnet-4-6 llama4-maverick llama4-scout pixtral-large \
-         gemma-3-27b qwen3-vl nemotron-nano kimi-k2.5 \
-         nova-pro claude-opus-4-7; do
+for m in claude-opus-4-8 claude-opus-4-7 claude-sonnet-4-6 \
+         llama4-maverick llama4-scout pixtral-large \
+         gemma-3-27b qwen3-vl nemotron-nano kimi-k2.5 nova-pro; do
   echo "=== $m ==="
-  python -u run_llm.py --model "$m"
+  python -u run_llm.py --model "$m" --out-dir results/
 done
 ```
 
-You can also run different models in parallel from separate shells —
-each model has its own CSV and its own `raw_outputs/<model>/` directory,
-so there's no shared mutable state. Don't run the same model twice in
+You can also run different models in parallel from separate shells — each
+model has its own CSV and its own `raw_outputs/<model>/` directory, so
+there's no shared mutable state. Don't run the same model twice in
 parallel; both processes would race on the same un-done frames and
 double-write the CSV.
 
-### 3. Score
+### 4. Score the predictions
 
-`score_preds.py` works on any CSV with the
-`split,clip,frame,x,y` schema (both baseline and LLM output qualify):
+`score_preds.py` works on any CSV with the `split,clip,frame,x,y` schema —
+both baseline and LLM outputs qualify:
 
 ```bash
-python score_preds.py --preds claude-opus-4-7_preds.csv
+python score_preds.py --preds results/claude-opus-4-8_preds.csv
 ```
 
 Prints aggregate counts and the headline `mean GOSPA / max(n_gt, 1)`.
 
-For per-frame scores (used to build distributions, CDFs, per-bucket
-plots, etc.), pass `--per-frame-out`:
+For per-frame scores (used to build distributions, CDFs, per-bucket plots,
+etc.), pass `--per-frame-out`:
 
 ```bash
-mkdir -p per_frame
 python score_preds.py \
-  --preds claude-opus-4-7_preds.csv \
-  --per-frame-out per_frame/claude-opus-4-7.csv
+    --preds results/claude-opus-4-8_preds.csv \
+    --per-frame-out results/claude-opus-4-8_scores.csv
 ```
 
 The per-frame CSV schema is
-`split,clip,frame,n_pred,n_gt,gospa,gospa_normalized,missed,false`,
-where `gospa_normalized = gospa / max(n_gt, 1)` is the per-frame
-contribution to the headline.
+`split,clip,frame,n_pred,n_gt,gospa,gospa_normalized,missed,false`, where
+`gospa_normalized = gospa / max(n_gt, 1)` is the per-frame contribution to
+the headline.
+
+To score every model in `results/` at once:
+
+```bash
+for f in results/*_preds.csv; do
+  m=$(basename "$f" _preds.csv)
+  echo "=== $m ==="
+  python score_preds.py --preds "$f" \
+      --per-frame-out "results/${m}_scores.csv"
+done
+```
 
 ## Manifest
 
-`manifest.csv` is the source of truth for which (split, clip, frame)
-tuples are scored. The columns are:
+`manifest.csv` is the source of truth for which (split, clip, frame) tuples
+are scored. The columns are:
 
 ```
 split,clip,frame,n_players,direction,bucket

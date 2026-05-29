@@ -17,6 +17,7 @@ const FILTERS = {
 }
 
 const BUCKETS = {
+  "claude-opus-4-8": "undisclosed",
   "claude-opus-4-7": "undisclosed",
   "claude-sonnet-4-6": "undisclosed",
   "nova-pro": "undisclosed",
